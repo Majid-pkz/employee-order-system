@@ -1,99 +1,61 @@
-import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
-import Image from "next/image";
+import Link from "next/link";
 
-export default async function ProductsPage() {
+export default async function AdminDashboardPage() {
   const session = await auth();
-  if (!session) redirect("/admin/login");
 
-  const products = await prisma.product.findMany({
-    orderBy: { name: "asc" },
-  });
+  if (!session) {
+    redirect("/admin/login");
+  }
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Products</h1>
-        <Link
-          href="/admin/products/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/admin/login" });
+          }}
         >
-          + Add Product
+          <button
+            type="submit"
+            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+          >
+            Sign Out
+          </button>
+        </form>
+      </div>
+
+      <p className="mb-6 text-lg">
+        Welcome, <strong>{session.user?.name}</strong>
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Link
+          href="/admin/employees"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold mb-2">Employees</h2>
+          <p className="text-gray-600">Manage employee list and PINs</p>
         </Link>
-      </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-6 py-3">Image</th>
-              <th className="text-left px-6 py-3">Name</th>
-              <th className="text-left px-6 py-3">Market Price</th>
-              <th className="text-left px-6 py-3">Discounted Price</th>
-              <th className="text-left px-6 py-3">Status</th>
-              <th className="text-left px-6 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-t">
-                <td className="px-6 py-4">
-                  {product.imagePath ? (
-                    <Image
-                      src={product.imagePath}
-                      alt={product.name}
-                      width={60}
-                      height={60}
-                      className="rounded object-cover"
-                    />
-                  ) : (
-                    <div className="w-[60px] h-[60px] bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
-                      No image
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-4 font-medium">{product.name}</td>
-                <td className="px-6 py-4">
-                  ${Number(product.marketPrice).toFixed(2)}
-                </td>
-                <td className="px-6 py-4">
-                  ${Number(product.discountedPrice).toFixed(2)}
-                </td>
-                <td className="px-6 py-4">
-                  {product.isActive ? (
-                    <span className="text-green-600">Active</span>
-                  ) : (
-                    <span className="text-red-600">Inactive</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  <Link
-                    href={`/admin/products/${product.id}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    Edit
-                  </Link>
-                  <DeleteProductButton productId={product.id} />
-                </td>
-              </tr>
-            ))}
-            {products.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No products yet. Click “Add Product” to create one.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+        <Link
+          href="/admin/products"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold mb-2">Products</h2>
+          <p className="text-gray-600">Master product list</p>
+        </Link>
 
-      <div className="mt-6">
-        <Link href="/admin" className="text-blue-600 hover:underline">
-          ← Back to Dashboard
+        <Link
+          href="/admin/cycles"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold mb-2">Order Cycles</h2>
+          <p className="text-gray-600">Create and manage monthly cycles</p>
         </Link>
       </div>
     </div>
