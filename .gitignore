@@ -57,3 +57,6 @@ dev.db-journal
 .claude/
 .windsurf/
 skills-lock.json
+
+# uploaded files
+public/uploads/

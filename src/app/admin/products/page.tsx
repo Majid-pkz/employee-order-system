@@ -3,7 +3,6 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
-import Image from "next/image";
 
 export default async function ProductsPage() {
   const session = await auth();
@@ -42,12 +41,13 @@ export default async function ProductsPage() {
               <tr key={product.id} className="border-t">
                 <td className="px-6 py-4">
                   {product.imagePath ? (
-                    <Image
+                    <img
                       src={product.imagePath}
                       alt={product.name}
                       width={60}
                       height={60}
                       className="rounded object-cover"
+                      style={{ width: 60, height: 60 }}
                     />
                   ) : (
                     <div className="w-[60px] h-[60px] bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
