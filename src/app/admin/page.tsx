@@ -57,6 +57,13 @@ export default async function AdminDashboardPage() {
           <h2 className="text-xl font-semibold mb-2">Order Cycles</h2>
           <p className="text-gray-600">Create and manage monthly cycles</p>
         </Link>
+        <Link
+          href="/admin/orders"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition"
+        >
+          <h2 className="text-xl font-semibold mb-2">Orders</h2>
+          <p className="text-gray-600">View and manage submitted orders</p>
+        </Link>
       </div>
     </div>
   );
