@@ -11,14 +11,57 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { id } = await params;
+  const { id: cycleProductId } = await params;
 
   try {
-    await prisma.cycleProduct.delete({
-      where: { id },
+    // 1. Find all order items that use this cycle product
+    const affectedItems = await prisma.orderItem.findMany({
+      where: { cycleProductId },
+      select: { orderId: true },
     });
 
-    return NextResponse.json({ success: true });
+    // Unique list of affected order IDs
+    const affectedOrderIds = [
+      ...new Set(affectedItems.map((item) => item.orderId)),
+    ];
+
+    // 2. Do everything in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete all order items that reference this cycle product
+      await tx.orderItem.deleteMany({
+        where: { cycleProductId },
+      });
+
+      // Delete the cycle product itself
+      await tx.cycleProduct.delete({
+        where: { id: cycleProductId },
+      });
+
+      // Recalculate total for every affected order
+      for (const orderId of affectedOrderIds) {
+        const remainingItems = await tx.orderItem.findMany({
+          where: { orderId },
+        });
+
+        const newTotal = remainingItems.reduce(
+          (sum, item) => sum + Number(item.lineTotal),
+          0
+        );
+
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            totalAmount: newTotal,
+            status: "edited",
+          },
+        });
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      affectedOrders: affectedOrderIds.length,
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
