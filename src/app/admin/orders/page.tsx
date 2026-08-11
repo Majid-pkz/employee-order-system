@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ExportButtons } from "@/components/admin/ExportButtons";
 
 export default async function AdminOrdersPage() {
   const session = await auth();
@@ -72,20 +73,42 @@ export default async function AdminOrdersPage() {
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Orders</h1>
-          <p className="text-gray-600">
-            {cycle.name}{" "}
-            <span className="capitalize">({cycle.status})</span>
-          </p>
-        </div>
-        <Link
-          href="/admin"
-          className="text-blue-600 hover:underline"
-        >
-          ← Dashboard
-        </Link>
-      </div>
+  <div>
+    <h1 className="text-3xl font-bold">Orders</h1>
+    <p className="text-gray-600">
+      {cycle.name}{" "}
+      <span className="capitalize">({cycle.status})</span>
+    </p>
+  </div>
+
+  <div className="flex items-center gap-4">
+   <ExportButtons
+  cycleName={cycle.name}
+  cycleStatus={cycle.status}
+  orders={cycle.orders.map((order) => ({
+    orderNumber: order.orderNumber,
+    employeeName: order.employeeName,
+    employeeId: order.employeeId,
+    totalAmount: Number(order.totalAmount),
+    isAuthenticated: order.isAuthenticated,
+    requiresSignature: order.requiresSignature,
+    status: order.status,
+    items: order.items.map((item) => ({
+      productName: item.cycleProduct.product.name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      lineTotal: Number(item.lineTotal),
+    })),
+  }))}
+  productTotals={Array.from(productTotals.values())}
+  grandTotal={totalValue}
+/>
+
+    <Link href="/admin" className="text-blue-600 hover:underline">
+      ← Dashboard
+    </Link>
+  </div>
+</div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
