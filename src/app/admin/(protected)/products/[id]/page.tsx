@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
+import { requireAdminPage } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { ProductForm } from "@/components/admin/ProductForm";
 
 export default async function EditProductPage({
@@ -8,8 +8,7 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   const { id } = await params;
 
@@ -33,6 +32,8 @@ export default async function EditProductPage({
           marketPrice: Number(product.marketPrice),
           discountedPrice: Number(product.discountedPrice),
           imagePath: product.imagePath,
+          category: product.category,
+          unit: product.unit,
           isActive: product.isActive,
         }}
       />

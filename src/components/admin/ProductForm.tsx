@@ -1,182 +1,31 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-type ProductFormProps = {
-  initialData?: {
-    id: string;
-    name: string;
-    description: string | null;
-    marketPrice: number;
-    discountedPrice: number;
-    imagePath: string | null;
-    isActive: boolean;
-  };
-};
-
-export function ProductForm({ initialData }: ProductFormProps) {
+import Image from "next/image";
+import { Save } from "lucide-react";
+import { IMAGE_OPTIONS, PRODUCT_CATEGORIES, productImage } from "@/lib/catalog";
+type Initial = { id: string; name: string; description: string | null; marketPrice: number; discountedPrice: number; imagePath: string | null; isActive: boolean; category?: string; unit?: string };
+export function ProductForm({ initialData }: { initialData?: Initial }) {
   const router = useRouter();
-  const isEditing = !!initialData;
-
-  const [name, setName] = useState(initialData?.name ?? "");
-  const [description, setDescription] = useState(initialData?.description ?? "");
-  const [marketPrice, setMarketPrice] = useState(
-    initialData?.marketPrice?.toString() ?? ""
-  );
-  const [discountedPrice, setDiscountedPrice] = useState(
-    initialData?.discountedPrice?.toString() ?? ""
-  );
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [name, setName] = useState(initialData?.name || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [marketPrice, setMarketPrice] = useState(initialData?.marketPrice.toString() || "");
+  const [discountedPrice, setDiscountedPrice] = useState(initialData?.discountedPrice.toString() || "");
+  const [category, setCategory] = useState(initialData?.category || "Dairy");
+  const [unit, setUnit] = useState(initialData?.unit || "");
+  const [imagePath, setImagePath] = useState(initialData ? productImage(initialData.imagePath, initialData.name) : IMAGE_OPTIONS[0].path);
   const [isActive, setIsActive] = useState(initialData?.isActive ?? true);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    const market = parseFloat(marketPrice);
-    const discounted = parseFloat(discountedPrice);
-
-    if (isNaN(market) || market < 0 || isNaN(discounted) || discounted < 0) {
-      setError("Please enter valid prices");
-      setLoading(false);
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("name", name);
-    formData.append("description", description || "");
-    formData.append("marketPrice", market.toString());
-    formData.append("discountedPrice", discounted.toString());
-    formData.append("isActive", isActive.toString());
-
-    if (imageFile) {
-      formData.append("image", imageFile);
-    }
-
-    const url = isEditing
-      ? `/api/admin/products/${initialData.id}`
-      : `/api/admin/products`;
-
-    const method = isEditing ? "PUT" : "POST";
-
-    const res = await fetch(url, {
-      method,
-      body: formData, // important: no Content-Type header when using FormData
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Something went wrong");
-      return;
-    }
-
-    router.push("/admin/products");
-    router.refresh();
+  const [error, setError] = useState("");
+  async function submit(e: React.FormEvent) {
+    e.preventDefault(); setLoading(true); setError("");
+    try {
+      const response = await fetch(initialData ? "/api/admin/products/" + initialData.id : "/api/admin/products", { method: initialData ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description: description || null, marketPrice: Number(marketPrice), discountedPrice: Number(discountedPrice), category, unit, imagePath, isActive }) });
+      const result = await response.json();
+      if (!response.ok) { setError(result.error); return; }
+      router.push("/admin/products"); router.refresh();
+    } catch { setError("We could not save this product. Please try again."); }
+    finally { setLoading(false); }
   }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow">
-      <div>
-        <label className="block text-sm font-medium mb-1">Product Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Description (optional)</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-          rows={3}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Market Price</label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          value={marketPrice}
-          onChange={(e) => setMarketPrice(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">Discounted Price</label>
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          value={discountedPrice}
-          onChange={(e) => setDiscountedPrice(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium mb-1">
-          Product Image {isEditing ? "(leave empty to keep current)" : "(optional)"}
-        </label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-          className="w-full border rounded px-3 py-2"
-        />
-        {initialData?.imagePath && !imageFile && (
-          <p className="text-sm text-gray-500 mt-1">
-            Current image: {initialData.imagePath}
-          </p>
-        )}
-      </div>
-
-      {isEditing && (
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="isActive"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-          />
-          <label htmlFor="isActive">Active</label>
-        </div>
-      )}
-
-      {error && <p className="text-red-600 text-sm">{error}</p>}
-
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? "Saving..." : isEditing ? "Update Product" : "Create Product"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => router.push("/admin/products")}
-          className="border px-4 py-2 rounded hover:bg-gray-50"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
+  return <form className="admin-form" onSubmit={submit}><div className="field"><label htmlFor="product-name">Product name</label><input id="product-name" value={name} onChange={e => setName(e.target.value)} maxLength={120} required /></div><div className="field"><label htmlFor="product-description">Description</label><textarea id="product-description" value={description} onChange={e => setDescription(e.target.value)} maxLength={500} /></div><div className="admin-form-grid"><div className="field"><label htmlFor="product-category">Category</label><select id="product-category" value={category} onChange={e => setCategory(e.target.value)}>{PRODUCT_CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></div><div className="field"><label htmlFor="product-unit">Pack size</label><input id="product-unit" value={unit} onChange={e => setUnit(e.target.value)} placeholder="e.g. 1 litre or 500 g" maxLength={40} required /></div></div><div className="admin-form-grid"><div className="field"><label htmlFor="market-price">Regular price (AUD)</label><input id="market-price" type="number" step="0.01" min="0" max="10000" value={marketPrice} onChange={e => setMarketPrice(e.target.value)} required /></div><div className="field"><label htmlFor="staff-price">Staff price (AUD)</label><input id="staff-price" type="number" step="0.01" min="0" max="10000" value={discountedPrice} onChange={e => setDiscountedPrice(e.target.value)} required /></div></div><fieldset><legend className="text-sm font-medium">Catalogue photo</legend><div className="photo-select">{IMAGE_OPTIONS.map(option => <button type="button" key={option.path} className={"photo-option" + (imagePath === option.path ? " active" : "")} aria-pressed={imagePath === option.path} onClick={() => setImagePath(option.path)}><Image src={option.path} alt={option.label} width={160} height={160} sizes="160px" /><span>{option.label}</span></button>)}</div><button className="text-button" type="button" onClick={() => setImagePath(null)}>Use a simple category placeholder</button><p className="photo-attribution">Unbranded AI-generated photos. Illustrative only.</p></fieldset><div className="checkbox-field"><input id="product-active" type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} /><label htmlFor="product-active">Product is active</label></div>{error && <p className="form-error" role="alert">{error}</p>}<div className="form-actions"><button type="submit" className="button button-primary" disabled={loading}><Save size={15} />{loading ? "Saving…" : initialData ? "Save product" : "Create product"}</button><button type="button" className="button button-outline" onClick={() => router.push("/admin/products")}>Cancel</button></div></form>;
 }

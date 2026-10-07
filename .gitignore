@@ -60,3 +60,7 @@ skills-lock.json
 
 # uploaded files
 public/uploads/
+!.env.example
+.test-data/
+test-results/
+playwright-report/

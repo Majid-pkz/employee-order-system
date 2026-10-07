@@ -1,72 +1,26 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
+import { requireAdmin } from "@/lib/access";
+import { assertSameOrigin, apiError, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { id: cycleProductId } = await params;
-
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // 1. Find all order items that use this cycle product
-    const affectedItems = await prisma.orderItem.findMany({
-      where: { cycleProductId },
-      select: { orderId: true },
-    });
-
-    // Unique list of affected order IDs
-    const affectedOrderIds = [
-      ...new Set(affectedItems.map((item) => item.orderId)),
-    ];
-
-    // 2. Do everything in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Delete all order items that reference this cycle product
-      await tx.orderItem.deleteMany({
-        where: { cycleProductId },
-      });
-
-      // Delete the cycle product itself
-      await tx.cycleProduct.delete({
-        where: { id: cycleProductId },
-      });
-
-      // Recalculate total for every affected order
-      for (const orderId of affectedOrderIds) {
-        const remainingItems = await tx.orderItem.findMany({
-          where: { orderId },
-        });
-
-        const newTotal = remainingItems.reduce(
-          (sum, item) => sum + Number(item.lineTotal),
-          0
-        );
-
-        await tx.order.update({
-          where: { id: orderId },
-          data: {
-            totalAmount: newTotal,
-            status: "edited",
-          },
-        });
+    assertSameOrigin(req); await requireAdmin();
+    const { id: cycleProductId } = await params;
+    const affectedOrders = await prisma.$transaction(async tx => {
+      const product = await tx.cycleProduct.findUnique({ where: { id: cycleProductId } });
+      if (!product) throw new ApiError(404, "Product not found in this cycle.");
+      const items = await tx.orderItem.findMany({ where: { cycleProductId }, select: { orderId: true } });
+      const ids = [...new Set(items.map(i => i.orderId))];
+      await tx.orderItem.deleteMany({ where: { cycleProductId } });
+      await tx.cycleProduct.delete({ where: { id: cycleProductId } });
+      for (const orderId of ids) {
+        const remaining = await tx.orderItem.findMany({ where: { orderId } });
+        const totalAmount = remaining.reduce((sum, i) => sum.add(i.lineTotal), new Prisma.Decimal(0));
+        await tx.order.update({ where: { id: orderId }, data: { totalAmount, status: remaining.length ? "edited" : "cancelled" } });
       }
+      return ids.length;
     });
-
-    return NextResponse.json({
-      success: true,
-      affectedOrders: affectedOrderIds.length,
-    });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Failed to remove product from cycle" },
-      { status: 500 }
-    );
-  }
+    return NextResponse.json({ success: true, affectedOrders });
+  } catch (error) { return apiError(error); }
 }

@@ -1,0 +1,30 @@
+services:
+  setup:
+    build:
+      context: .
+      target: build
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/data/pantry.db
+    volumes:
+      - pantry-data:/data
+    command: npm run db:deploy
+  web:
+    build:
+      context: .
+      target: runner
+    env_file: .env
+    environment:
+      DATABASE_URL: file:/data/pantry.db
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    volumes:
+      - pantry-data:/data
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    restart: unless-stopped
+volumes:
+  pantry-data:

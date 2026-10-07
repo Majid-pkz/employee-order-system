@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="site-container loading-page" aria-busy="true" aria-label="Loading the pantry"><div className="skeleton skeleton-title" /><div className="skeleton skeleton-subtitle" /><div className="skeleton-grid">{[1, 2, 3].map(n => <div className="skeleton skeleton-card" key={n} />)}</div><p>Getting your pantry ready…</p></main>; }

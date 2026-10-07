@@ -1,62 +1,25 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/access";
+import { assertSameOrigin, apiError, ApiError } from "@/lib/api";
+import { cycleUpdateSchema } from "@/lib/validation";
 import { prisma } from "@/lib/prisma";
-
-export async function PUT(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { id } = await params;
-
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const body = await req.json();
-    const { name, deadline, status } = body;
-
-    // If trying to open this cycle, make sure no other cycle is open
-    if (status === "open") {
-      const otherOpen = await prisma.orderCycle.findFirst({
-        where: {
-          status: "open",
-          id: { not: id },
-        },
-      });
-
-      if (otherOpen) {
-        return NextResponse.json(
-          { error: "Another cycle is already open. Close it first." },
-          { status: 400 }
-        );
+    assertSameOrigin(req); await requireAdmin();
+    const { id } = await params;
+    const data = cycleUpdateSchema.parse(await req.json());
+    const cycle = await prisma.$transaction(async tx => {
+      const current = await tx.orderCycle.findUnique({ where: { id } });
+      if (!current) throw new ApiError(404, "Cycle not found.");
+      if (data.status === "open") {
+        const deadline = data.deadline === undefined ? current.deadline : data.deadline ? new Date(data.deadline) : null;
+        if (deadline && deadline <= new Date()) throw new ApiError(400, "Set a future deadline before opening this cycle.");
+        const other = await tx.orderCycle.findFirst({ where: { status: "open", id: { not: id } } });
+        if (other) throw new ApiError(409, "Close the existing open cycle first.");
+        if (!await tx.cycleProduct.count({ where: { cycleId: id, isAvailable: true, product: { isActive: true } } })) throw new ApiError(400, "Add at least one active product before opening this cycle.");
       }
-    }
-
-    const data: {
-      name?: string;
-      deadline?: Date | null;
-      status?: string;
-    } = {};
-
-    if (name !== undefined) data.name = name;
-    if (deadline !== undefined) {
-      data.deadline = deadline ? new Date(deadline) : null;
-    }
-    if (status !== undefined) data.status = status;
-
-    const cycle = await prisma.orderCycle.update({
-      where: { id },
-      data,
+      return tx.orderCycle.update({ where: { id }, data: { ...data, ...(data.deadline !== undefined ? { deadline: data.deadline ? new Date(data.deadline) : null } : {}) } });
     });
-
     return NextResponse.json(cycle);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Failed to update cycle" },
-      { status: 500 }
-    );
-  }
+  } catch (error) { return apiError(error); }
 }

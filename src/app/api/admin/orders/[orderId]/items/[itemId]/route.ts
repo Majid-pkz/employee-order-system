@@ -1,58 +1,20 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
+import { requireAdmin } from "@/lib/access";
+import { assertSameOrigin, apiError, ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ orderId: string; itemId: string }> }
-) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { orderId, itemId } = await params;
-
+export async function DELETE(req: Request, { params }: { params: Promise<{ orderId: string; itemId: string }> }) {
   try {
-    // Make sure the item belongs to this order
-    const item = await prisma.orderItem.findUnique({
-      where: { id: itemId },
+    assertSameOrigin(req); await requireAdmin();
+    const { orderId, itemId } = await params;
+    await prisma.$transaction(async tx => {
+      const item = await tx.orderItem.findFirst({ where: { id: itemId, orderId } });
+      if (!item) throw new ApiError(404, "Order item not found.");
+      await tx.orderItem.delete({ where: { id: itemId } });
+      const remaining = await tx.orderItem.findMany({ where: { orderId } });
+      const totalAmount = remaining.reduce((sum, i) => sum.add(i.lineTotal), new Prisma.Decimal(0));
+      await tx.order.update({ where: { id: orderId }, data: { totalAmount, status: remaining.length ? "edited" : "cancelled" } });
     });
-
-    if (!item || item.orderId !== orderId) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-    }
-
-    // Delete the item and recalculate the order total
-    await prisma.$transaction(async (tx) => {
-      await tx.orderItem.delete({
-        where: { id: itemId },
-      });
-
-      const remainingItems = await tx.orderItem.findMany({
-        where: { orderId },
-      });
-
-      const newTotal = remainingItems.reduce(
-        (sum, i) => sum + Number(i.lineTotal),
-        0
-      );
-
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          totalAmount: newTotal,
-          status: "edited",
-        },
-      });
-    });
-
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Failed to remove item" },
-      { status: 500 }
-    );
-  }
+  } catch (error) { return apiError(error); }
 }

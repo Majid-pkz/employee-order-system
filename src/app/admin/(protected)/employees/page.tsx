@@ -1,11 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdminPage } from "@/lib/access";
 
 export default async function EmployeesPage() {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   const employees = await prisma.employee.findMany({
     orderBy: { employeeId: "asc" },

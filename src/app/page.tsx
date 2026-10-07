@@ -1,67 +1,18 @@
-import { prisma } from "@/lib/prisma";
-import { OrderForm } from "@/components/order/OrderForm";
 import Link from "next/link";
+import { ArrowDown, ArrowRight, CalendarDays, Leaf } from "lucide-react";
 import { PublicHeader } from "@/components/order/PublicHeader";
-
+import { PublicFooter } from "@/components/order/PublicFooter";
+import { OrderForm } from "@/components/order/OrderForm";
+import { getEmployee } from "@/lib/access";
+import { getOpenCycle, formatDeadline } from "@/lib/cycles";
+export const dynamic = "force-dynamic";
 export default async function HomePage() {
-  // Find the currently open cycle
-  const openCycle = await prisma.orderCycle.findFirst({
-    where: { status: "open" },
-    include: {
-      cycleProducts: {
-        where: { isAvailable: true },
-        include: {
-          product: true,
-        },
-        orderBy: {
-          product: { name: "asc" },
-        },
-      },
-    },
-  });
-
-  if (!openCycle) {
-  return (
-  <div className="min-h-screen bg-gray-100">
-    <PublicHeader />
-    <div className="flex items-center justify-center px-4 py-16">
-      <div className="bg-white p-10 rounded-lg shadow text-center max-w-md">
-        <h1 className="text-2xl font-bold mb-4">Orders are currently closed</h1>
-        <p className="text-gray-600">
-          There is no open order cycle at the moment. Please check back later.
-        </p>
-      </div>
-    </div>
-  </div>
-);
-  }
-
-  return (
-   <div className="min-h-screen bg-gray-100">
-    <PublicHeader title={openCycle.name} />
-    <div className="max-w-3xl mx-auto px-4 pb-10">
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h1 className="text-2xl font-bold">{openCycle.name}</h1>
-        {openCycle.deadline && (
-          <p className="text-gray-600 mt-1">
-            Order deadline: {new Date(openCycle.deadline).toLocaleString()}
-          </p>
-        )}
-      </div>
-
-        <OrderForm
-          cycleId={openCycle.id}
-        cycleName={openCycle.name}
-        products={openCycle.cycleProducts.map((cp) => ({
-          cycleProductId: cp.id,
-          name: cp.product.name,
-          description: cp.product.description,
-          price: Number(cp.price),
-          maxQty: cp.maxQtyPerPerson,
-          imagePath: cp.product.imagePath,
-          }))}
-       />
-    </div>
-  </div>
-);
+  const [cycle, employee] = await Promise.all([getOpenCycle(), getEmployee()]);
+  const deadlineLabel = cycle?.deadline ? formatDeadline(cycle.deadline) : null;
+  const demo = process.env.DEMO_MODE === "true" && process.env.DEMO_EMPLOYEE_PASSWORD ? { id: process.env.DEMO_EMPLOYEE_ID || "DEMO001", password: process.env.DEMO_EMPLOYEE_PASSWORD } : undefined;
+  return <><PublicHeader /><main>
+    <section className="shop-hero"><div className="site-container hero-inner"><div className="hero-copy"><span className="eyebrow"><span className="status-dot" />{cycle ? "YOUR STAFF SALES CYCLE IS OPEN" : "YOUR EVERYDAY STAFF PERK"}</span><h1>A little pantry.<br /><em>A lot to love.</em></h1><p>Everyday favourites, thoughtful staff prices.<br className="desktop-break" /> Pick your good things. We’ll take care of the rest.</p><div className="hero-actions">{cycle ? <a href="#catalogue" className="button button-primary">Explore the selection <ArrowDown size={16} /></a> : <Link href="/edit" className="button button-primary">View my orders <ArrowRight size={16} /></Link>}<span><Leaf size={17} /> Made for your team</span></div></div><div className="cycle-callout"><span className="eyebrow">{cycle ? "ON THE MENU" : "THE NEXT GOOD THING"}</span><h2>{cycle?.name || "Back soon."}</h2><p>{cycle ? "A fresh selection of dairy, drinks and pantry favourites." : "There isn’t an open sales cycle right now. Check back when your staff sales team opens the next one."}</p>{deadlineLabel && <div className="cycle-deadline"><CalendarDays size={18} /><span>Order by<strong>{deadlineLabel}</strong></span></div>}<span className="cycle-tag">{cycle ? "Pay on collection" : "Orders are currently closed"}</span></div></div></section>
+    <div className="site-container shop-main">{cycle ? <OrderForm cycleId={cycle.id} cycleName={cycle.name} employeeName={employee?.fullName || null} deadlineLabel={deadlineLabel} demo={demo} products={cycle.cycleProducts.map(cp => ({ cycleProductId: cp.id, name: cp.product.name, description: cp.product.description, category: cp.product.category, unit: cp.product.unit, price: Number(cp.price), marketPrice: Number(cp.product.marketPrice), maxQty: cp.maxQtyPerPerson, imagePath: cp.product.imagePath }))} /> : <section className="closed-cycle"><ShoppingClosed /><h2>Good things will be back.</h2><p>Your existing orders are still available in My order.</p><Link href="/edit" className="text-button">View my order <ArrowRight size={15} /></Link></section>}</div>
+  </main><PublicFooter /></>;
 }
+function ShoppingClosed() { return <span className="closed-icon"><Leaf size={30} strokeWidth={1.3} /></span>; }

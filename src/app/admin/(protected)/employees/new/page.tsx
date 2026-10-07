@@ -1,10 +1,8 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdminPage } from "@/lib/access";
 import { EmployeeForm } from "@/components/admin/EmployeeForm";
 
 export default async function NewEmployeePage() {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   return (
     <div className="p-8 max-w-xl">

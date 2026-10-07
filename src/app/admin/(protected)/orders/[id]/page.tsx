@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { requireAdminPage } from "@/lib/access";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdminOrderActions } from "@/components/admin/AdminOrderActions";
 
@@ -9,8 +9,7 @@ export default async function AdminOrderDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   const { id } = await params;
 
