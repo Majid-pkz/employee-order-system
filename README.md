@@ -87,7 +87,7 @@ The SQL migrations are applied by the included SQLite/libSQL runner, which recor
 
 ## Free portfolio hosting
 
-A prepared Vercel Hobby + Turso Free deployment is documented in [the portfolio deployment guide](docs/portfolio-deployment.md). The Vercel build checks the database before migrations or seeding and accepts Turso Marketplace environment variables. This configuration is for a separate personal demo project.
+A prepared Vercel Hobby + Turso Free deployment is documented in [the portfolio deployment guide](docs/portfolio-deployment.md). First-time setup checks the database before migrations or seeding and accepts Turso Marketplace environment variables. Normal redeployments compile without touching the database; future schema changes use the guarded `npm run db:prepare-demo` command before deploying. This configuration is for a separate personal demo project.
 
 ## Persistent hosting
 

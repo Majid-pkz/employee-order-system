@@ -34,7 +34,7 @@ No real employee data or workplace database credentials are needed. Account auth
 | Plan | Hobby |
 | Function region | Sydney, configured in `vercel.json` |
 
-The build first inspects the chosen database, then applies migrations and optionally creates the fictional demo data. It rejects unrelated tables, unfamiliar employee/admin accounts, non-demo products and orders with unknown owners **before** database writes.
+When `ALLOW_DEMO_SEED=true`, the first build inspects the chosen database, applies migrations and creates the fictional demo data. It rejects unrelated tables, unfamiliar employee/admin accounts, non-demo products and orders with unknown owners **before** database writes. With `ALLOW_DEMO_SEED=false`, normal builds compile the application without inspecting or changing the database.
 
 ## Environment variables
 
@@ -68,7 +68,9 @@ The employee demo credentials are displayed to visitors. The administrator passw
 
 ## Publish and verify
 
-Deploy the prepared branch. After the first successful deployment, set `ALLOW_DEMO_SEED=false` and redeploy. Later builds continue to apply new migrations but skip demo seeding.
+Deploy the prepared branch. After the first successful deployment, set `ALLOW_DEMO_SEED=false` and redeploy. Later builds do not run migrations or seeding, and do not depend on finding a seeded employee during compilation.
+
+For a future release that changes the database schema, back up the dedicated demo database and run `npm run db:prepare-demo` in an authorized environment with its matching database URL/token and `DEMO_MODE=true`, before deploying. Keep `ALLOW_DEMO_SEED=false` to apply migrations without seeding. This explicit preparation command uses the same business-data preflight before any writes. Production secrets must stay in the provider's secure environment; do not copy them into repository files.
 
 Confirm these actions on the live URL:
 

@@ -24,7 +24,15 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - run: npm run build
+      - name: Build the existing demo without database provisioning
+        run: npm run build:vercel
+        env:
+          DATABASE_URL: libsql://build-only.invalid
+          DATABASE_AUTH_TOKEN: ci-only-synthetic-token
+          DEMO_MODE: "true"
+          ALLOW_DEMO_SEED: "false"
+          DEMO_EMPLOYEE_PASSWORD: SyntheticVisitor2026!
+          DEMO_ADMIN_PASSWORD: SyntheticAdmin2026!
       - run: npm run test:integration
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
