@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { databaseConfig } from "../src/lib/database-config";
 import { createClient } from "@libsql/client";
 import { createHash, randomUUID } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
@@ -26,9 +27,7 @@ function statements(sql: string) {
   return result;
 }
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("Set DATABASE_URL before applying migrations.");
-  const client = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN });
+  const client = createClient(databaseConfig(process.env, false));
   try {
     await client.execute(`CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
       "id" TEXT NOT NULL PRIMARY KEY, "checksum" TEXT NOT NULL, "finished_at" DATETIME,

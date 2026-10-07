@@ -14,7 +14,8 @@
     "db:seed-demo": "node --import tsx scripts/seed-demo.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:integration": "node --import tsx tests/integration.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:vercel": "node --import tsx scripts/build-vercel.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
