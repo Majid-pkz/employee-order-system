@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
+import { requireAdminPage } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { EmployeeForm } from "@/components/admin/EmployeeForm";
 
 export default async function EditEmployeePage({
@@ -8,8 +8,7 @@ export default async function EditEmployeePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   const { id } = await params;
 

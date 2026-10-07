@@ -1,10 +1,8 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdminPage } from "@/lib/access";
 import { CycleForm } from "@/components/admin/CycleForm";
 
 export default async function NewCyclePage() {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   return (
     <div className="p-8 max-w-xl">

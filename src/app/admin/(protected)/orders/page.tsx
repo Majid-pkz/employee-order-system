@@ -1,37 +1,17 @@
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdminPage } from "@/lib/access";
 import Link from "next/link";
 import { ExportButtons } from "@/components/admin/ExportButtons";
 
-export default async function AdminOrdersPage() {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
-
-  // Get the current open cycle (or the most recent one)
-  const cycle = await prisma.orderCycle.findFirst({
-    where: {
-      OR: [{ status: "open" }, { status: "closed" }],
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      orders: {
-        include: {
-          items: {
-            include: {
-              cycleProduct: {
-                include: { product: true },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-      cycleProducts: {
-        include: { product: true },
-      },
-    },
-  });
+export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<{ cycle?: string }> }) {
+  await requireAdminPage();
+  const { cycle: requestedCycle } = await searchParams;
+  const cycles = await prisma.orderCycle.findMany({ where: { status: { in: ["open", "closed"] } }, orderBy: { createdAt: "desc" }, select: { id: true, name: true, status: true } });
+  const selectedId = requestedCycle || cycles.find(c => c.status === "open")?.id || cycles[0]?.id;
+  const cycle = selectedId ? await prisma.orderCycle.findUnique({
+    where: { id: selectedId },
+    include: { orders: { include: { items: { include: { cycleProduct: { include: { product: true } } } } }, orderBy: { createdAt: "desc" } } },
+  }) : null;
 
   if (!cycle) {
     return (
@@ -110,6 +90,11 @@ export default async function AdminOrdersPage() {
   </div>
 </div>
 
+      <form method="get" className="admin-form cycle-selector">
+        <div className="field"><label htmlFor="orders-cycle">Sales cycle</label><select id="orders-cycle" name="cycle" defaultValue={cycle.id}>{cycles.map(c => <option key={c.id} value={c.id}>{c.name} · {c.status}</option>)}</select></div>
+        <button className="button button-outline" type="submit">Show orders</button>
+      </form>
+
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-lg shadow p-5">
@@ -121,7 +106,7 @@ export default async function AdminOrdersPage() {
           <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-5">
-          <p className="text-sm text-gray-500">Needs Signature</p>
+          <p className="text-sm text-gray-500">Legacy signature checks</p>
           <p className="text-2xl font-bold">
             {cycle.orders.filter((o) => o.requiresSignature).length}
           </p>
@@ -136,7 +121,7 @@ export default async function AdminOrdersPage() {
               <th className="text-left px-6 py-3">Order #</th>
               <th className="text-left px-6 py-3">Employee</th>
               <th className="text-left px-6 py-3">Total</th>
-              <th className="text-left px-6 py-3">Auth</th>
+              <th className="text-left px-6 py-3">Verification</th>
               <th className="text-left px-6 py-3">Status</th>
               <th className="text-left px-6 py-3">Actions</th>
             </tr>
@@ -156,7 +141,7 @@ export default async function AdminOrdersPage() {
                 </td>
                 <td className="px-6 py-4">
                   {order.isAuthenticated ? (
-                    <span className="text-green-600 text-sm">Authenticated</span>
+                    <span className="text-green-600 text-sm">Verified account</span>
                   ) : (
                     <span className="text-orange-600 text-sm">Needs signature</span>
                   )}

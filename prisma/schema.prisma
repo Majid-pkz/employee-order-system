@@ -7,6 +7,7 @@ datasource db {
 }
 
 model Admin {
+  sessionVersion Int @default(0)
   id           String   @id @default(cuid())
   username     String   @unique
   passwordHash String
@@ -17,6 +18,7 @@ model Admin {
 }
 
 model Employee {
+  sessionVersion Int @default(0)
   id         String   @id @default(cuid())
   employeeId String   @unique
   fullName   String
@@ -28,6 +30,9 @@ model Employee {
 }
 
 model Product {
+  sku String? @unique
+  category String @default("Pantry")
+  unit String @default("each")
   id              String         @id @default(cuid())
   name            String
   description     String?
@@ -41,6 +46,7 @@ model Product {
 }
 
 model OrderCycle {
+  nextOrderNumber Int @default(1)
   id            String         @id @default(cuid())
   name          String
   startDate     DateTime?
@@ -95,4 +101,9 @@ model OrderItem {
   lineTotal      Decimal
   order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   cycleProduct   CycleProduct @relation(fields: [cycleProductId], references: [id])
+}
+model LoginAttempt {
+  key String @id
+  attempts Int @default(0)
+  resetAt DateTime
 }

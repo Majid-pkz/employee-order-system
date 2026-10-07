@@ -1,7 +1,9 @@
-import { auth } from "@/lib/auth";
+import { formatDeadline } from "@/lib/cycles";
+import { requireAdminPage } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
+import { CycleForm } from "@/components/admin/CycleForm";
 import { CycleStatusButtons } from "@/components/admin/CycleStatusButtons";
 import { AddProductToCycle } from "@/components/admin/AddProductToCycle";
 import { RemoveCycleProductButton } from "@/components/admin/RemoveCycleProductButton";
@@ -11,8 +13,7 @@ export default async function ManageCyclePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   const { id } = await params;
 
@@ -56,13 +57,15 @@ export default async function ManageCyclePage({
           </p>
           {cycle.deadline && (
             <p className="text-gray-600">
-              Deadline: {new Date(cycle.deadline).toLocaleString()}
+              Deadline: {formatDeadline(cycle.deadline)}
             </p>
           )}
         </div>
 
         <CycleStatusButtons cycleId={cycle.id} currentStatus={cycle.status} />
       </div>
+
+      <details className="bg-white p-6 mb-8 rounded-lg"><summary className="cursor-pointer font-medium">Edit cycle name and deadline</summary><div className="mt-5"><CycleForm initialData={{ id: cycle.id, name: cycle.name, deadline: cycle.deadline?.toISOString() || null }} /></div></details>
 
       {/* Products currently in the cycle */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">

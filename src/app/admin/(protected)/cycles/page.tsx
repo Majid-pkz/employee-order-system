@@ -1,11 +1,10 @@
+import { formatDeadline } from "@/lib/cycles";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdminPage } from "@/lib/access";
 
 export default async function CyclesPage() {
-  const session = await auth();
-  if (!session) redirect("/admin/login");
+  await requireAdminPage();
 
   const cycles = await prisma.orderCycle.findMany({
     orderBy: { createdAt: "desc" },
@@ -39,7 +38,7 @@ export default async function CyclesPage() {
                 <td className="px-6 py-4 font-medium">{cycle.name}</td>
                 <td className="px-6 py-4">
                   {cycle.deadline
-                    ? new Date(cycle.deadline).toLocaleString()
+                    ? formatDeadline(cycle.deadline)
                     : "—"}
                 </td>
                 <td className="px-6 py-4">
