@@ -85,6 +85,10 @@ A public demo shares its fictional employee account and therefore its fictional 
 
 The SQL migrations are applied by the included SQLite/libSQL runner, which records and verifies the standard Prisma migration checksums. A database made with `prisma db push` but without migration history needs an explicit baseline before deployment; do not apply the initial migration over existing tables.
 
+## Free portfolio hosting
+
+A prepared Vercel Hobby + Turso Free deployment is documented in [the portfolio deployment guide](docs/portfolio-deployment.md). The Vercel build checks the database before migrations or seeding and accepts Turso Marketplace environment variables. This configuration is for a separate personal demo project.
+
 ## Persistent hosting
 
 Production requires an explicit `DATABASE_URL`, a unique `AUTH_SECRET`, HTTPS and an `AUTH_URL` matching the public origin. Set `APP_TIMEZONE` to your organisation's IANA timezone. Employee and administrator sign-in use the same origin. Do not place the SQLite database on an ephemeral or read-only application filesystem.
