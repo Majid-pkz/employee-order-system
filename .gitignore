@@ -60,6 +60,7 @@ skills-lock.json
 
 # uploaded files
 public/uploads/
+/public/deployment-health.json
 !.env.example
 .test-data/
 test-results/

@@ -12,9 +12,11 @@
     "db:deploy": "node --import tsx scripts/migrate.ts && node --import tsx scripts/retire-images.ts",
     "db:admin": "node --import tsx scripts/create-admin.ts",
     "db:seed-demo": "node --import tsx scripts/seed-demo.ts",
+    "db:prepare-demo": "node --import tsx scripts/prepare-demo.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:integration": "node --import tsx tests/integration.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:vercel": "node --import tsx scripts/build-vercel.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.4",
@@ -47,7 +49,7 @@
     "typescript-eslint": "^8.71.1"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": "24.x"
   },
   "overrides": {
     "deepmerge-ts": "8.0.2",
