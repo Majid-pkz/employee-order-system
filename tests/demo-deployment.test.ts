@@ -6,11 +6,24 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { assertDemoDatabase } from "../src/lib/demo-deployment";
 import { databaseConfig } from "../src/lib/database-config";
+import { databaseDiagnostics } from "../src/lib/database-diagnostics";
 
 test("Turso marketplace variables configure the hosted database", () => {
   assert.deepEqual(databaseConfig({ TURSO_DATABASE_URL: "libsql://demo.turso.io", TURSO_AUTH_TOKEN: "test-token", NODE_ENV: "production" }), { url: "libsql://demo.turso.io", authToken: "test-token" });
   assert.throws(() => databaseConfig({ NODE_ENV: "production" }), /persistent database/);
   assert.throws(() => databaseConfig({ TURSO_DATABASE_URL: "libsql://demo.turso.io" }), /AUTH_TOKEN/);
+  assert.throws(() => databaseConfig({ VERCEL: "1" }), /persistent database/);
+  assert.throws(() => databaseConfig({ VERCEL: "1", DATABASE_URL: "file:./dev.db" }), /hosted database/);
+});
+
+test("connection diagnostics compare destinations without disclosing credentials or hosts", () => {
+  const first = databaseDiagnostics({ DATABASE_URL: "libsql://private-db.turso.io?authToken=url-secret", DATABASE_AUTH_TOKEN: "private-token" });
+  const second = databaseDiagnostics({ TURSO_DATABASE_URL: "libsql://private-db.turso.io", TURSO_AUTH_TOKEN: "different-token" });
+  assert.equal(first.fingerprint, second.fingerprint);
+  assert.equal(first.mode, "hosted");
+  assert.equal(first.source, "DATABASE_URL");
+  assert.equal(second.source, "TURSO_DATABASE_URL");
+  assert.doesNotMatch(JSON.stringify(first), /private-db|url-secret|private-token/);
 });
 
 test("explicit demo preparation preserves existing orders, credentials and cycle state", async () => {

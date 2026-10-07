@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { spawnSync } from "node:child_process";
+import { writeFile } from "node:fs/promises";
 import { databaseConfig } from "../src/lib/database-config";
+import { databaseDiagnostics } from "../src/lib/database-diagnostics";
 import { passcodeSchema } from "../src/lib/validation";
 
 async function main() {
@@ -16,6 +18,8 @@ async function main() {
   if (!config.url.startsWith("libsql://")) {
     throw new Error("Vercel requires a hosted Turso database; local SQLite files are not persistent.");
   }
+  // Non-sensitive connection metadata lets release checks compare build and runtime.
+  await writeFile("public/deployment-health.json", JSON.stringify(databaseDiagnostics(process.env)));
   const env = { ...process.env, DATABASE_URL: config.url, DATABASE_AUTH_TOKEN: config.authToken };
   const run = (args: string[]) => {
     const result = spawnSync(process.execPath, args, { env, stdio: "inherit" });

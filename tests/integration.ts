@@ -49,6 +49,8 @@ async function main() {
       server.on("exit", code => { if (code) { clearTimeout(timer); reject(new Error("Server failed: " + logs)); } });
     });
     const guest = new Client(), owner = new Client(), other = new Client(), third = new Client(), admin = new Client();
+    const health = await guest.json("/api/health");
+    check("database readiness reports healthy without exposing connection details", health.status === 200 && health.data.status === "ok" && !health.data.database);
     check("guest cannot enumerate employee records", (await guest.json("/api/employees/lookup?name=Ava")).status === 401);
     check("guest cannot create orders", (await guest.json("/api/orders", "POST", {})).status === 401);
     check("guest cannot use admin APIs", (await guest.json("/api/admin/employees", "POST", {})).status === 401);

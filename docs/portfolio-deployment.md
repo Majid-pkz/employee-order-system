@@ -56,6 +56,8 @@ Set these in Vercel's **Production** environment for the dedicated demo project.
 
 The application also accepts `DATABASE_URL`/`DATABASE_AUTH_TOKEN`. Use one matching URL/token pair; do not configure conflicting pairs. Marketplace-provided Turso variables work directly.
 
+Hosted connections use the HTTP-only libSQL adapter. Vercel refuses local SQLite URLs and does not fall back to a local database when configuration is missing.
+
 Generate the authentication secret locally:
 
 ```bash
@@ -69,6 +71,8 @@ The employee demo credentials are displayed to visitors. The administrator passw
 ## Publish and verify
 
 Deploy the prepared branch. After the first successful deployment, set `ALLOW_DEMO_SEED=false` and redeploy. Later builds do not run migrations or seeding, and do not depend on finding a seeded employee during compilation.
+
+Check `/api/health` after deployment: HTTP 200 with `status: "ok"` means the required schema is available; HTTP 503 means the database is not ready. In demo mode, this endpoint includes a connection source, hosted/local mode and a destination fingerprint. Compare these with `/deployment-health.json` from the build when diagnosing a configuration mismatch. Neither endpoint exposes database URLs, tokens or application records. A successful build alone does not verify runtime database readiness. Save an order before redeploying and confirm the same order remains afterwards.
 
 For a future release that changes the database schema, back up the dedicated demo database and run `npm run db:prepare-demo` in an authorized environment with its matching database URL/token and `DEMO_MODE=true`, before deploying. Keep `ALLOW_DEMO_SEED=false` to apply migrations without seeding. This explicit preparation command uses the same business-data preflight before any writes. Production secrets must stay in the provider's secure environment; do not copy them into repository files.
 
